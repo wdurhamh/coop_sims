@@ -1,3 +1,10 @@
+"""
+TODO:
+	- Some sort of visualization
+	- Put hard bounds (0<=beta<=1, etc...)
+"""
+
+
 import numpy as np
 import pandas as pd
 from scipy.integrate import odeint
@@ -28,12 +35,14 @@ class Dynamcis:
 	def set_t(self, t):
 		self.t = t
 
-	"""A place holder to be overwritten in children classes"""
+	"""
+	A place holder to be overwritten in sub classes
+	"""
 	def dynamics(self,x,t):
 		return [0,0]
 
 	"""
-	Method stub to be overwritten by su classes
+	Method stub to be overwritten by sub classes
 	"""
 	def calc_additional_vars(self):
 		return 'Implemented by subclasses'
@@ -127,11 +136,11 @@ class SidePayment(Dynamcis):
 		x2 = barx2 + dx2
 		
 
-		dx1_dot = alpha*A[1,0]*x2 + (2*A[0,0]*x1 + A[0,1]*x2 + B[0] )
+		dx1_dot = alpha*A[1,0]*x2 + (2*A[0,0]*x1 + A[0,1]*x2 + B[0] ) + (1-beta)*(dx2*A[0,1])
 		dx1_opt = ( alpha*A[1,0]*x2 + (2*A[0,0]*barx1 + A[0,1]*x2 + B[0]) )/(-2*A[0,0])
 		alpha_dot = A[1,0]*A[1,0]*x2/(-2*A[0,0]) - 1*(x2*dx1_opt*A[1,0]) + ((A[1,0]*x2)**2)*(1-alpha)/(-2*A[0,0]) 
 	    
-		dx2_dot = beta*A[0,1]*x1 + (2*A[1,1]*(x2) + A[1,0]*x1 + B[1] )
+		dx2_dot = beta*A[0,1]*x1 + (2*A[1,1]*(x2) + A[1,0]*x1 + B[1] ) + (1-alpha)*(dx1*A[1,0])
 		dx2_opt = ( x[3]*A[0,1]*x[0] + (2*A[1,1]*x[1] + A[1,0]*x[0] + B[1]) )/(-2*A[1,1])
 		#dx2_opt = 1
 		beta_dot = A[0,1]*A[0,1]*x1/(-2*A[1,1]) - 1*(x1*dx2_opt*A[0,1]) + ((A[0,1]*x1)**2)*(1-beta)/(-2*A[1,1])
