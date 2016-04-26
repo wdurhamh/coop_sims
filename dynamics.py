@@ -33,6 +33,12 @@ class Dynamcis:
 		return [0,0]
 
 	"""
+	Method stub to be overwritten by su classes
+	"""
+	def calc_additional_vars(self):
+		return 'Implemented by subclasses'
+
+	"""
 	Run the simulation from the initial condition (default is all 0's)
 	over the interval (default is 10000 intervals between 0 and 30)
 	"""
@@ -40,10 +46,26 @@ class Dynamcis:
 		sim_data = odeint(self.dynamics, self.init_cond, self.t)
 		self.sim_data = pd.DataFrame(sim_data)
 		self.name_cols()
+		self.calc_additional_vars()
 		return self.sim_data
 
-	def get_final_state(self):
-		return 'TACOS'
+	"""
+	Calculates system variables from the three fundmental variabels, barx, dx, and beta
+	Not overwritten in any class
+	"""
+	def calc_prices_profits_and_revenues(self):
+		self.sim_data['x1'] = self.sim_data['barx1'] + self.sim_data['dx1']
+		self.sim_data['x2'] = self.sim_data['barx2'] + self.sim_data['dx2']
+		self.sim_data['Pi1'] = self.sim_data["x1"]*(self.A[0,0]*self.sim_data["x1"] + self.A[0,1]*self.sim_data["x2"] + self.B[0,0])
+		self.sim_data['Pi2'] = self.sim_data["x2"]*(self.A[1,0]*self.sim_data["x1"] + self.A[1,1]*self.sim_data["x2"] + self.B[1,0])
+		self.sim_data['p1sur'] = (self.sim_data['x1']*self.A[0,1]*self.sim_data['dx2'])
+		self.sim_data['p2sur'] = (self.sim_data['x2']*self.A[1,0]*self.sim_data['dx1'])
+		self.sim_data['Pi1NC']  = self.sim_data['x1']*(self.A[0,0]*self.sim_data['x1'] + self.A[0,1]*self.sim_data['barx2'] + self.B[0,0])
+		self.sim_data['Pi2NC']  = self.sim_data['x2']*(self.A[1,1]*self.sim_data['x2'] + self.A[1,0]*self.sim_data['barx1'] + self.B[1,0])
+		self.sim_data['V1'] = self.sim_data['Pi1NC'] + (1 - self.sim_data['beta1'])*self.sim_data['p1sur'] + self.sim_data['beta2']*self.sim_data['p2sur']
+		self.sim_data['V2'] = self.sim_data['Pi2NC'] + (1 - self.sim_data['beta2'])*self.sim_data['p2sur'] + self.sim_data['beta1']*self.sim_data['p1sur']
+		self.sim_data['Social Welfare'] = self.sim_data["Pi1"] + self.sim_data["Pi2"]
+		self.sim_data = self.sim_data[['barx1', 'barx2', 'dx1', 'dx2', 'x1', 'x2', 'beta1','beta2', 'V1', 'V2', 'Social Welfare']]
 
 
 class NC(Dynamcis):
@@ -56,7 +78,14 @@ class NC(Dynamcis):
 		return xdot.reshape(2,).tolist()[0]
 
 	def name_cols(self):
-		self.sim_data.columns=["x1","x2"]
+		self.sim_data.columns=["barx1","barx2"]
+
+	def calc_additional_vars(self):
+		self.sim_data['dx1'] = 0
+		self.sim_data['dx2'] = 0
+		self.sim_data['beta1'] = 0
+		self.sim_data['beta2'] = 0
+		self.calc_prices_profits_and_revenues()
 
 class FC(Dynamcis):
 
@@ -68,7 +97,14 @@ class FC(Dynamcis):
 		return xdot.reshape(2,).tolist()[0]
 
 	def name_cols(self):
-		self.sim_data.columns=["x1","x2"]
+		self.sim_data.columns=["barx1","barx2"]
+
+	def calc_additional_vars(self):
+		self.sim_data['dx1'] = 0
+		self.sim_data['dx2'] = 0
+		self.sim_data['beta1'] = 0
+		self.sim_data['beta2'] = 0
+		self.calc_prices_profits_and_revenues()
 
 class SidePayment(Dynamcis):
 
@@ -77,7 +113,7 @@ class SidePayment(Dynamcis):
 
 	def dynamics(self,x,t):
 		x = np.matrix(x).T
-		J = np.matrix('-6 -2 0 0 0 0; -1 -6 0 0 0 0')
+		J = np.array( [[2*self.A[0,0], self.A[0,1],0,0,0,0], [self.A[1,0], 2*self.A[1,1],0,0,0,0]] ).reshape(2,6)
 		A = self.A
 		B = self.B
 		x_dot = J*x + B
@@ -127,6 +163,9 @@ class SidePayment(Dynamcis):
 		return x_dot
 
 	def name_cols(self):
-		self.sim_data.columns = ['barx1', 'barx2', 'dx2', 'beta', 'dx1', 'alpha']
+		self.sim_data.columns = ['barx1', 'barx2', 'dx2', 'beta1', 'dx1', 'beta2']
+
+	def calc_additional_vars(self):
+		self.calc_prices_profits_and_revenues()
 
 
