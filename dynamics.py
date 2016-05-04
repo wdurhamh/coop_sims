@@ -129,29 +129,30 @@ class SidePayment(Dynamcis):
 		barx1 = x[0]
 		barx2 = x[1]
 		dx2 = x[2]
-		beta = x[3]
+		beta1 = x[3]
 		dx1 = x[4]
-		alpha = x[5]
+		beta2 = x[5]
 		x1 = barx1 + dx1
 		x2 = barx2 + dx2
-		
 
-		dx1_dot = alpha*A[1,0]*x2 + (2*A[0,0]*x1 + A[0,1]*x2 + B[0] ) + (1-beta)*(dx2*A[0,1])
-		dx1_opt = ( alpha*A[1,0]*x2 + (2*A[0,0]*barx1 + A[0,1]*x2 + B[0]) )/(-2*A[0,0])
-		alpha_dot = A[1,0]*A[1,0]*x2/(-2*A[0,0]) - 1*(x2*dx1_opt*A[1,0]) + ((A[1,0]*x2)**2)*(1-alpha)/(-2*A[0,0]) 
+		dx1_dot = beta2*A[1,0]*x2 + (2*A[0,0]*x1 + A[0,1]*barx2 + B[0] ) + (1-beta1)*(dx2*A[0,1])
+		dx1_opt = ( beta2*A[1,0]*x2 + (2*A[0,0]*barx1 + A[0,1]*barx2 + B[0]) )/(-2*A[0,0])
+		dx2_dot = beta1*A[0,1]*x1 + (2*A[1,1]*(x2) + A[1,0]*barx1 + B[1] ) + (1-beta2)*(dx1*A[1,0])
+		dx2_opt = ( beta1*A[0,1]*x1 + (2*A[1,1]*barx2 + A[1,0]*barx1 + B[1]) )/(-2*A[1,1])
 	    
-		dx2_dot = beta*A[0,1]*x1 + (2*A[1,1]*(x2) + A[1,0]*x1 + B[1] ) + (1-alpha)*(dx1*A[1,0])
-		dx2_opt = ( x[3]*A[0,1]*x[0] + (2*A[1,1]*x[1] + A[1,0]*x[0] + B[1]) )/(-2*A[1,1])
-		#dx2_opt = 1
-		beta_dot = A[0,1]*A[0,1]*x1/(-2*A[1,1]) - 1*(x1*dx2_opt*A[0,1]) + ((A[0,1]*x1)**2)*(1-beta)/(-2*A[1,1])
+	    #betaj
+		beta2_dot = -1*(x2*dx1_opt*A[1,0]) + ((A[1,0]*x2)**2)*(1-beta2)/(-2*A[0,0]) #+ beta*dx2*A[1,0]*A[0,1]*x2/(-2*A[0,0])
+	    #betai
+		beta1_dot = -1*(x1*dx2_opt*A[0,1]) + ((A[0,1]*x1)**2)*(1-beta1)/(-2*A[1,1]) #+ alpha*dx1*A[0,1]*A[1,0]*x1/(-2*A[1,1])
+	    
 		x_dot = x_dot.reshape(2,).tolist()[0]
 	    
 	    #multiplicative constant
 		c = 1.0
 		x_dot.append(c*dx2_dot[0,0])
-		x_dot.append(c*beta_dot[0,0])
+		x_dot.append(c*beta1_dot[0,0])
 		x_dot.append(c*dx1_dot[0,0])
-		x_dot.append(c*alpha_dot[0,0])
+		x_dot.append(c*beta2_dot[0,0])
 	    
 	    #check limits (though I don't think these should be necessary)
 	    #check that beta is between 0 and 1
