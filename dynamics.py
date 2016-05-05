@@ -178,4 +178,56 @@ class SidePayment(Dynamcis):
 	def calc_additional_vars(self):
 		self.calc_prices_profits_and_revenues()
 
+class SidePaymentBeta(SidePayment):
 
+	def dynamics(self,x,t):
+		x = np.matrix(x).T
+		J = np.array( [[2*self.A[0,0], self.A[0,1],0,0,0,0], [self.A[1,0], 2*self.A[1,1],0,0,0,0]] ).reshape(2,6)
+		A = self.A
+		B = self.B
+		x_dot = J*x + B
+		barx1 = x[0]
+		barx2 = x[1]
+		dx2 = x[2]
+		beta1 = x[3]
+		dx1 = x[4]
+		beta2 = x[5]
+		x1 = barx1 + dx1
+		x2 = barx2 + dx2
+
+		dx1_dot = beta2*A[1,0]*x2 + (2*A[0,0]*x1 + A[0,1]*barx2 + B[0] ) + (1-beta1)*(dx2*A[0,1])
+		dx1_opt = ( beta2*A[1,0]*x2 + (2*A[0,0]*barx1 + A[0,1]*barx2 + B[0]) )/(-2*A[0,0])
+		dx2_dot = beta1*A[0,1]*x1 + (2*A[1,1]*(x2) + A[1,0]*barx1 + B[1] ) + (1-beta2)*(dx1*A[1,0])
+		dx2_opt = ( beta1*A[0,1]*x1 + (2*A[1,1]*barx2 + A[1,0]*barx1 + B[1]) )/(-2*A[1,1])
+	    
+	    #betaj
+		beta2_dot = ((1-2*beta2)*x2*A[1,0]**2 + (1-beta1)*A[0,1]*A[1,0]*x2)/(-2*A[0,0]) #+ beta*dx2*A[1,0]*A[0,1]*x2/(-2*A[0,0])
+	    #betai
+		beta1_dot = ((1-2*beta1)*x1*A[0,1]**2 + (1-beta2)*A[1,0]*A[0,1]*x1)/(-2*A[1,1]) #+ alpha*dx1*A[0,1]*A[1,0]*x1/(-2*A[1,1])
+	    
+		x_dot = x_dot.reshape(2,).tolist()[0]
+	    
+	    #multiplicative constant
+		c = 1.0
+		x_dot.append(c*dx2_dot[0,0])
+		x_dot.append(c*beta1_dot[0,0])
+		x_dot.append(c*dx1_dot[0,0])
+		x_dot.append(c*beta2_dot[0,0])
+	    
+	    #check limits (though I don't think these should be necessary)
+	    #check that beta is between 0 and 1
+		if x[3] >= 1 and x_dot[3] > 0:
+			x_dot[3] = 0
+		if x[3] <= 0 and x_dot[3] < 0:
+			x_dot[3] = 0
+	        
+		if x[5] >= 1 and x_dot[5] > 0:
+			x_dot[5] = 0
+		if x[5] <= 0 and x_dot[5] < 0:
+			x_dot[5] = 0
+	    #make sure delta is not greater than x2
+	    #perhaps here we need to think of coeficients
+		if (x[1] + x[2]) <=0 and ( x_dot[2] + x_dot[1] ) < 0:
+			x_dot[2] = 0
+	    #print x_dot, x
+		return x_dot
