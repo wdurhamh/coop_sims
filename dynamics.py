@@ -1,15 +1,13 @@
 """
-TODO:
-	- Some sort of visualization
-	- Put hard bounds (0<=beta<=1, etc...)
+Cooperation simulation in two-firm Bertrand market with linear demand
 """
-
-
 import numpy as np
+import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.integrate import odeint
+from scipy import linalg
 
-class Dynamcis:
+class Dynamics:
 
 	"""
 	Initialize the market with A and B matricies.
@@ -65,19 +63,55 @@ class Dynamcis:
 	def calc_prices_profits_and_revenues(self):
 		self.sim_data['x1'] = self.sim_data['barx1'] + self.sim_data['dx1']
 		self.sim_data['x2'] = self.sim_data['barx2'] + self.sim_data['dx2']
-		self.sim_data['Pi1'] = self.sim_data["x1"]*(self.A[0,0]*self.sim_data["x1"] + self.A[0,1]*self.sim_data["x2"] + self.B[0,0])
-		self.sim_data['Pi2'] = self.sim_data["x2"]*(self.A[1,0]*self.sim_data["x1"] + self.A[1,1]*self.sim_data["x2"] + self.B[1,0])
+		self.sim_data['Pi1'],self.sim_data['Pi2'] = self.get_profits(self.sim_data["x1"],self.sim_data["x2"])
 		self.sim_data['p1sur'] = (self.sim_data['x1']*self.A[0,1]*self.sim_data['dx2'])
 		self.sim_data['p2sur'] = (self.sim_data['x2']*self.A[1,0]*self.sim_data['dx1'])
 		self.sim_data['Pi1NC']  = self.sim_data['x1']*(self.A[0,0]*self.sim_data['x1'] + self.A[0,1]*self.sim_data['barx2'] + self.B[0,0])
 		self.sim_data['Pi2NC']  = self.sim_data['x2']*(self.A[1,1]*self.sim_data['x2'] + self.A[1,0]*self.sim_data['barx1'] + self.B[1,0])
 		self.sim_data['V1'] = self.sim_data['Pi1NC'] + (1 - self.sim_data['beta1'])*self.sim_data['p1sur'] + self.sim_data['beta2']*self.sim_data['p2sur']
 		self.sim_data['V2'] = self.sim_data['Pi2NC'] + (1 - self.sim_data['beta2'])*self.sim_data['p2sur'] + self.sim_data['beta1']*self.sim_data['p1sur']
-		self.sim_data['Social Welfare'] = self.sim_data["Pi1"] + self.sim_data["Pi2"]
-		self.sim_data = self.sim_data[['barx1', 'barx2', 'dx1', 'dx2', 'x1', 'x2', 'beta1','beta2', 'V1', 'V2', 'Social Welfare']]
+		self.sim_data['Producer Welfare'] = self.sim_data["Pi1"] + self.sim_data["Pi2"]
+		self.sim_data = self.sim_data[['barx1', 'barx2', 'dx1', 'dx2', 'x1', 'x2', 'beta1','beta2', 'V1', 'V2', 'Producer Welfare']]
+	"""
+	Generates data for contour plot
+	"""	
+	def gen_contour_graph_data(self,xmin=0,xmax=10,ymin=0,ymax=10):
+		if self.n!=2: return "gen_contour_graph only works for two player systems"
+		xi, yi = np.linspace(xmin, xmax, 100), np.linspace(ymin, ymax, 100)
+		xi,yi=np.meshgrid(xi,yi)
+		pw=self.get_producer_welfare(xi,yi)
+		return xi,yi,pw
 
+	"""
+	Given prices, calc profits
+	"""
+	def get_profits(self,x1,x2):
+		pi1=x1*(self.A[0,0]*x1 + self.A[0,1]*x2 + self.B[0,0])
+		pi2=x2*(self.A[1,1]*x2 + self.A[1,0]*x1 + self.B[1,0])
+		return pi1,pi2
+	"""
+	Calculate producer welfare at a given pricing policy
+	"""
+	def get_producer_welfare(self,x1,x2):
+		pi1,pi2=self.get_profits(x1,x2)
+		return pi1+pi2
 
-class NC(Dynamcis):
+	"""
+	Get prices at the non-cooperative equilibrium
+	"""	
+	def get_NCE_prices(self):
+		_A = self.A + np.array([[self.A[0,0], 0],[0, self.A[1,1]]]).reshape(2,2)
+		policy=linalg.solve(_A,-1*self.B)
+		return policy[0,0],policy[1,0]
+	"""
+	Get prices at the perfectly cooperative or collusive outcome
+	"""
+	def get_PCE_prices(self):
+		_A = self.A + np.array([[self.A[0,0], self.A[1,0]],[self.A[0,1], self.A[1,1]]]).reshape(2,2)
+		policy=linalg.solve(_A,-1*self.B)
+		return policy[0,0],policy[1,0]
+
+class NC(Dynamics):
 
 	def dynamics(self, x,t):
 		x = x.reshape(2,1)
@@ -96,7 +130,7 @@ class NC(Dynamcis):
 		self.sim_data['beta2'] = 0
 		self.calc_prices_profits_and_revenues()
 
-class FC(Dynamcis):
+class FC(Dynamics):
 
 	def dynamics(self,x,t):
 		x = x.reshape(2,1)
@@ -115,7 +149,7 @@ class FC(Dynamcis):
 		self.sim_data['beta2'] = 0
 		self.calc_prices_profits_and_revenues()
 
-class SidePayment(Dynamcis):
+class SidePayment(Dynamics):
 
 	def set_initial_conditions(self,x=[0,0,0,0,0,0]):
 		self.init_cond = x
